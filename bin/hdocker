@@ -1,0 +1,128 @@
+#!/bin/bash
+apk=/etc/apk/repositories
+dockerbin=/usr/bin/docker
+ip=$(curl ifconfig.me)
+if [ -f "$apk" ]
+then
+    echo ""
+else
+   clear
+   echo "No se ha encontrado un sistema operativo Alpine Linux."
+   exit
+fi
+clear
+echo "IP: $ip"
+echo ""
+echo "##########################################"
+echo "# Docker Manager  #"
+echo -e "\e[34m# 1) Eliminar todos los contenedores     # \e[0m"
+echo -e "\e[36m# 2) Reinstalar Docker                   # \e[0m"
+echo -e "\e[31m# 3) Eliminar Docker, Panel, Tunel Ngrok # \e[0m"
+echo -e "\e[35m# 4) Crear tunel Ngrok (Acceso a panel)  # \e[0m"
+echo "# 5) Salir                               #"
+echo "##########################################"
+while true; do
+    read -p "Elija una opcion: " op
+    case $op in
+        [1]* )
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+      break;;
+        [2]* )
+clear
+echo "Iniciando reinstalacion"
+sleep 4
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+service docker stop
+apk del docker docker-compose
+rc-update del docker boot
+sleep 1
+apk add docker docker-compose
+rc-update add docker boot
+service docker start
+clear
+if [ -f "$dockerbin" ]
+then
+echo "Docker reinstalado"
+else
+   echo "Error. No se ha podido instalar Docker"
+   exit
+fi
+        break;;
+        [3]* )
+if [ -f "$dockerbin" ]
+then
+docker stop $(docker ps -a -q)
+sleep 2
+docker volume rm $(docker volume ls -q)
+sleep 2
+docker rm $(docker ps -a -q)
+clear
+service docker stop
+apk del docker docker-compose
+rc-update del docker boot
+else
+   echo "Error. No se ha encontrado Docker"
+fi
+if [ -f /usr/bin/ngrok ]
+then
+echo "Eliminando Ngrok"
+killall ngrok &
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+clear
+rm /usr/bin/ngrok
+else
+echo "No se ha encontrado Ngrok."
+fi
+        break;;
+        [4]* ) 
+echo "Obtenga su Token de la siguiente URL: https://dashboard.ngrok.com/get-started/your-authtoken"
+
+read -p "Ingresa SOLO TU TOKEN NGROK: " ngrok_token
+echo ""
+if [ -f /usr/bin/ngrok ]
+then
+echo "Ngrok Encontrado"
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+killall ngrok
+else
+mkdir /tmp/
+wget -O /tmp/ngrok.tgz https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.tgz
+tar -xzvf /tmp/ngrok.tgz --directory /usr/bin/
+rm /tmp/ngrok.tgz
+fi
+ngrok authtoken $ngrok_token
+
+echo "Iniciando Ngrok en el puerto"
+nohup ngrok http 9000 &>/dev/null &
+
+#echo -n "Extracting ngrok public url ."
+NGROK_PUBLIC_URL=""
+while [ -z "$NGROK_PUBLIC_URL" ]; do
+  # Run 'curl' against ngrok API and extract public (using 'sed' command)
+  export NGROK_PUBLIC_URL=$(curl --silent --max-time 10 --connect-timeout 5 \
+                            --show-error http://127.0.0.1:4040/api/tunnels | \
+                            sed -nE 's/.*public_url":"https:..([^"]*).*/\1/p')
+  sleep 1
+  echo -n "."
+done
+clear
+echo
+echo "Listo, URL de acceso: https://$NGROK_PUBLIC_URL"
+echo "Acceso via IP: http://$ip:9000"
+        break;;
+        [5]* ) exit; break;;        
+        * ) exit;;
+    esac
+done
